@@ -21,7 +21,7 @@ global vidprocs, imgprocs
 vidprocs = []
 imgprocs = []
 listavidformats = [".webm", ".mkv", ".flv", ".flv", ".vob", ".ogv", ".ogg", ".avi",\
-            ".mts", ".ts", ".mov", ".qt", ".yuv", ".rm", ".rmvb", ".asf", ".mp4", ".m4p", ".m4v", ".mpg", ".mpeg", ".mpg", ".3gp", ".flv"]
+            ".mts", ".ts", ".mov", ".qt", ".yuv", ".rm", ".rmvb", ".asf", ".mp4", ".m4p", ".m4v", ".mpg", ".mpeg", ".mpg", ".3gp", ".flv", ".dav"]
 listaimgformats = [".jpg", ".jpeg", ".png", ".bmp"]
 #listimg = []
 #listvid = []
@@ -304,55 +304,67 @@ def NConvertProcess(listimg, qimg, maxdim, indeximg, sizeimgorg, sizeimgnew, siz
                     nconvertpath = os.path.join(application_path, 'nconvert.exe')
                     image = Image.open(abs_file_input)    
                     width, height = image.size
-                    if(height > width):
-                        compcmd =  "\"{}\" -overwrite -ratio -rflag decr -resize  0 {} -q {} -clevel 9 -c 1 -no_auto_ext -o \"{}\" \"{}\""
-                    else:
-                        compcmd = "\"{}\" -overwrite -ratio -rflag decr -resize {} 0 -q {} -clevel 9 -c 1 -no_auto_ext -o \"{}\" \"{}\""
-                    cmd = compcmd.format(nconvertpath, maxdim, qimg, abs_file_mid, relative_input)
-                    popen = subprocess.Popen(cmd, cwd = abs_root_dir,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-                    '''
-                    with open(logfile, encoding='utf-8', mode='w') as arquivo:
-                       while True:
-                           try:
-                               line = popen.stdout.readline()
-                               if not line:
-                                   break
-                          
-                               try:                
-                                   if ("Input" in line and ", from" in line and False):
-                                       None
-                                   elif "Output" in line and ", to " in line:
-                                       split = line.split(", to ")
-                                       arquivo.write(split[0]);
-                                       arquivo.write(", to ");
-                                       arquivo.write("~\'" + relative_output + "\'\n");
-                                   else:
-                                       arquivo.write(line);
-                                   
-                               except:
-                                   exc_type, exc_value, exc_tb = sys.exc_info()
-                                   erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
-                           except UnicodeDecodeError:
-                               None
-                    '''
-                    return_code = popen.wait()
-                    
-                    if(return_code==0):
-                        #print("OK:", abs_file_input, abs_file_output,return_code)
-                        try:
-                            shutil.move(abs_file_mid, abs_file_output)
-                            all_status_img[os.path.basename(abs_file_output)] = "Comprimido"
-                            #os.rename(abs_file_mid, abs_file_output)
-                        except:
-                            #traceback.print_exc()
-                            shutil.copyfile(abs_file_input, abs_file_output)    
+                    if(height>=2048 or width>=2048):
+                        ratio1 = round(min((1024/width)*(100),(1024/height)*(100)))
+                        
+                        if(height > width):
+                            compcmd =  "\"{}\" -overwrite -ratio -rtype lanczos -resize  {}% {}% -q {} -clevel 9 -c 1 -no_auto_ext -o \"{}\" \"{}\""
+                        else:
+                            compcmd = "\"{}\" -overwrite -ratio -rtype lanczos -resize {}% {}% -q {} -clevel 9 -c 1 -no_auto_ext -o \"{}\" \"{}\""
+                        cmd = compcmd.format(nconvertpath, ratio1, ratio1, qimg, abs_file_mid, relative_input)
+                        #print(cmd)
+                        popen = subprocess.Popen(cmd, cwd = abs_root_dir,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                        '''
+                        with open(logfile, encoding='utf-8', mode='w') as arquivo:
+                        while True:
+                            try:
+                                line = popen.stdout.readline()
+                                if not line:
+                                    break
+                            
+                                try:                
+                                    if ("Input" in line and ", from" in line and False):
+                                        None
+                                    elif "Output" in line and ", to " in line:
+                                        split = line.split(", to ")
+                                        arquivo.write(split[0]);
+                                        arquivo.write(", to ");
+                                        arquivo.write("~\'" + relative_output + "\'\n");
+                                    else:
+                                        arquivo.write(line);
+                                    
+                                except:
+                                    exc_type, exc_value, exc_tb = sys.exc_info()
+                                    erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                            except UnicodeDecodeError:
+                                None
+                        '''
+                        return_code = popen.wait()
+                        #print(return_code)
+                        if(return_code==0):
+                            #print("OK:", abs_file_input, abs_file_output,return_code)
+                            try:
+                                shutil.move(abs_file_mid, abs_file_output)
+                                all_status_img[os.path.basename(abs_file_output)] = "Comprimido"
+                                #os.rename(abs_file_mid, abs_file_output)
+                            except:
+                                #traceback.print_exc()
+                                shutil.copyfile(abs_file_input, abs_file_output)    
+                                all_status_img[os.path.basename(abs_file_output)] = "Copiado"
+                                try:                                               
+                                    os.remove(abs_file_mid)
+                                except:
+                                    None
+                                    #exc_type, exc_value, exc_tb = sys.exc_info()
+                                    #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                        else:
+                            #print("Erro:", abs_file_input, abs_file_output,return_code)
+                            shutil.copyfile(abs_file_input, abs_file_output)
                             all_status_img[os.path.basename(abs_file_output)] = "Copiado"
-                            try:                                               
+                            try:
                                 os.remove(abs_file_mid)
                             except:
                                 None
-                                #exc_type, exc_value, exc_tb = sys.exc_info()
-                                #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
                     else:
                         #print("Erro:", abs_file_input, abs_file_output,return_code)
                         shutil.copyfile(abs_file_input, abs_file_output)
@@ -394,7 +406,7 @@ def NConvertProcess(listimg, qimg, maxdim, indeximg, sizeimgorg, sizeimgnew, siz
                 indeximg.value += 1
 
 
-def FFMpegProcess(listvid, qvid, indexvid, sizevidorg, sizevidnew, sizeglobalorg, sizeglobalnew, listaprocesssos, idp, erros, keepfixed, all_status_vid, hwaccel=""):
+def FFMpegProcess(listvid, qvid, indexvid, sizevidorg, sizevidnew, sizeglobalorg, sizeglobalnew, listaprocesssos, idp, erros, keepfixed, all_status_vid, debug=False, cuda=False):
     application_path = ""
     highcomp = "\"{}\" {} -nostdin -y -i \"{}\" -filter:v scale='w=if(gt(ih\\,iw)\\,-2\\,480):h=if(gt(ih\\,iw)\\,480\\,-2)' -r 20"\
                     + " -vcodec libx265 -crf 32  -acodec aac -ar 22050 -ab 48k -ac 1 -map_metadata 0 "\
@@ -415,7 +427,9 @@ def FFMpegProcess(listvid, qvid, indexvid, sizevidorg, sizevidnew, sizeglobalorg
             application_path = os.path.dirname(os.path.abspath(__file__))
             
         ffmpegpath = os.path.join(application_path, 'ffmpeg.exe')
-        use_cuda = "-hwaccel cuda" 
+        use_cuda = ""
+        if(cuda):
+            use_cuda = "-hwaccel cuda" 
         if(platform.system()=="Linux"):
             ffmpegpath = 'ffmpeg'
             use_cuda = ""
@@ -462,19 +476,24 @@ def FFMpegProcess(listvid, qvid, indexvid, sizevidorg, sizevidnew, sizeglobalorg
         #print(cmd)
         try:
         #print(cmd)
-            try:
-                if(not os.path.exists(abs_file_output)):
-                    temp_size = math.ceil(os.path.getsize(abs_file_input) / (1024*1024))
-                    n_lines = 0
-                    kill = lambda process: process.kill()
+            with open(logfile, encoding='utf-8', mode='w') as arquivo:
+                try:
+                    if(debug):
+                        arquivo.write(f"Using cuda: {cuda}\n")
+                        arquivo.write(cmd+"\n")
+                    if(not os.path.exists(abs_file_output)):
+                        temp_size = math.ceil(os.path.getsize(abs_file_input) / (1024*1024))
+                        n_lines = 0
+                        kill = lambda process: process.kill()
 
-                    timeout_size_based = temp_size * 120
-                    popen = subprocess.Popen(cmd, cwd = abs_root_dir,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)#universal_newlines=True)
-                    my_timer = Timer(timeout_size_based, kill, [popen])
-                    try:
-                        my_timer.start()
-                        #stdout, stderr = popen.communicate()
-                        with open(logfile, encoding='utf-8', mode='w') as arquivo:
+                        timeout_size_based = temp_size * 120
+                        popen = subprocess.Popen(cmd, cwd = abs_root_dir,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)#universal_newlines=True)
+                        my_timer = Timer(timeout_size_based, kill, [popen])
+                        try:
+                            my_timer.start()
+                            #stdout, stderr = popen.communicate()
+                            
+                                
                             while True:
                                 
                                 line = popen.stdout.readline().decode('utf-8', errors="ignore")
@@ -484,75 +503,78 @@ def FFMpegProcess(listvid, qvid, indexvid, sizevidorg, sizevidnew, sizeglobalorg
                                         None
                                     elif "Output" in line and ", to " in line:
                                         split = line.split(", to ")
-                                        arquivo.write(split[0]);
-                                        arquivo.write(", to ");
-                                        arquivo.write("~\'" + relative_output + "\'");
+                                        arquivo.write(split[0])
+                                        arquivo.write(", to ")
+                                        arquivo.write("~\'" + relative_output + "\'")
                                     else:
-                                        arquivo.write(line);
+                                        arquivo.write(line)
                                     
                                 except:
                                     None
-                    except:
-                        traceback.print_exc()
-                        time.sleep(2)
-                    finally:
-                        my_timer.cancel()
-                        
-                                    #exc_type, exc_value, exc_tb = sys.exc_info()
-                                    #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
-                          
-                    return_code = popen.wait()
-                    #print()
-                    #print(relative_input, return_code)
-                    if(return_code==0):
-                        try:
-                            shutil.move(abs_file_mid, abs_file_output)
-                            #os.rename(abs_file_mid, abs_file_output)
-                            all_status_vid[os.path.basename(abs_file_output)] = "Comprimido"
                         except:
-                            #traceback.print_exc()
+                            traceback.print_exc()
+                            time.sleep(2)
+                        finally:
+                            my_timer.cancel()
+                            
+                                        #exc_type, exc_value, exc_tb = sys.exc_info()
+                                        #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                            
+                        return_code = popen.wait()
+                        arquivo.write(f"Return code: {return_code}")
+                        #print()
+                        #print(relative_input, return_code)
+                        if(return_code==0):
                             try:
-                                None
-                                
-                                shutil.copyfile(abs_file_input, abs_file_output)
-                                all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
-                                os.remove(abs_file_mid)
-                                
-                            except:
-                                traceback.print_exc()
-                                exc_type, exc_value, exc_tb = sys.exc_info()
-                                erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
-                    else:
-                        if(keepfixed):                            
-                            if(os.path.exists(abs_file_mid) and os.path.getsize(abs_file_mid) > 0):
                                 shutil.move(abs_file_mid, abs_file_output)
                                 #os.rename(abs_file_mid, abs_file_output)
                                 all_status_vid[os.path.basename(abs_file_output)] = "Comprimido"
-                            else:
-                                shutil.copyfile(abs_file_input, abs_file_output)
-                        else:
-                       
-                            shutil.copyfile(abs_file_input, abs_file_output)
-                            all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
-                            try:
-                                os.remove(abs_file_mid)
                             except:
-                                None
-                            #traceback.print_exc()
-                            #exc_type, exc_value, exc_tb = sys.exc_info()
-                            #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                                #traceback.print_exc()
+                                try:
+                                    None
+                                    
+                                    shutil.copyfile(abs_file_input, abs_file_output)
+                                    all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
+                                    os.remove(abs_file_mid)
+                                    
+                                except:
+                                    traceback.print_exc()
+                                    exc_type, exc_value, exc_tb = sys.exc_info()
+                                    erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                        else:
+                            if(keepfixed):                            
+                                if(os.path.exists(abs_file_mid) and os.path.getsize(abs_file_mid) > 0):
+                                    shutil.move(abs_file_mid, abs_file_output)
+                                    #os.rename(abs_file_mid, abs_file_output)
+                                    all_status_vid[os.path.basename(abs_file_output)] = "Comprimido"
+                                else:
+                                    shutil.copyfile(abs_file_input, abs_file_output)
+                            else:
                         
-            except:
-                traceback.print_exc()
-                
-                shutil.copyfile(abs_file_input, abs_file_output)
-                all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
-                
-            finally:
-                try:
-                    popen.terminate()
+                                shutil.copyfile(abs_file_input, abs_file_output)
+                                all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
+                                try:
+                                    os.remove(abs_file_mid)
+                                except:
+                                    None
+                                #traceback.print_exc()
+                                #exc_type, exc_value, exc_tb = sys.exc_info()
+                                #erros.append(traceback.format_exception(exc_type, exc_value, exc_tb))
+                        
                 except:
-                    None
+                    if(debug):
+                        arquivo.write(traceback.format_exc())
+                    #traceback.print_exc()
+                    
+                    shutil.copyfile(abs_file_input, abs_file_output)
+                    all_status_vid[os.path.basename(abs_file_output)] = "Copiado"
+                    
+                finally:
+                    try:
+                        popen.terminate()
+                    except:
+                        None
         except:
             all_status_vid[os.path.basename(abs_file_output)] = "ERRO"
             #print("Erro:", abs_file_input, abs_file_output)
@@ -635,6 +657,8 @@ def launchProcesses(client_socket=None, verbose=0):
     indeximg = multiprocessing.Value('i', 0)
     indexvid = multiprocessing.Value('i', 0)
     idp = 0
+    print(f"Will use cuda: {cuda}")
+    print(f"Is Debug Mode: {debug}")
     for pimg in range(proci):
         processes_img[pimg] = multiprocessing.Process(target=NConvertProcess, args=(listimg, qimg, maxdim,\
                                                                                     indeximg, sizeimgorg, sizeimgnew, sizeglobalorg, sizeglobalnew, listaprocesssos, idp, erros, keepfixed, all_status_img,), daemon=True)   
@@ -644,7 +668,7 @@ def launchProcesses(client_socket=None, verbose=0):
         
     for pvid in range(procv):
         processes_vid[pvid] = multiprocessing.Process(target=FFMpegProcess, args=(listvid, qvid, \
-                                                                                  indexvid, sizevidorg, sizevidnew, sizeglobalorg, sizeglobalnew, listaprocesssos, idp, erros, keepfixed, all_status_vid,), daemon=True)
+                                                                                  indexvid, sizevidorg, sizevidnew, sizeglobalorg, sizeglobalnew, listaprocesssos, idp, erros, keepfixed, all_status_vid, debug, cuda,), daemon=True)
         listaprocesssos.append(None)
         processes_vid[pvid].start()
         idp += 1
@@ -673,7 +697,7 @@ def recursiveDirValidate(diretorioorg, diretoriocomp, validado):
 
 def go():
     global dirs, proci, procv, qimg, imgsizemin, vidsizemin, maxdim, qvid, compvid, compimg, all_status_vid, all_status_img, \
-        indeximg, indexvid, sizeimgorg, sizeimgnew, sizevidorg, sizevidnew, listimg, listvid, keepfixed
+        indeximg, indexvid, sizeimgorg, sizeimgnew, sizevidorg, sizevidnew, listimg, listvid, keepfixed, debug, cuda
     global lockimg, lockvid, erros, listaprocesssos, override, logsDir, isclient, isserver, sizeglobalorg, sizeglobalnew, validarjpeg, compvideos, compimagens
     dirs = []
     proci = 10
@@ -688,7 +712,7 @@ def go():
     compimagens = True
     keepfixed = False
     long_options = ["verbose=", "dir=", "proci=", "procv=", "qimg=", "qvid=", "qvid=", "imgsizemin=", "vidsizemin=", "compvid=", \
-                    "compimg=", "maxdim=", "override", "server=", "client=", "naovalidarjpeg", "keepfixed", "yes", "outputdir="]
+                    "compimg=", "maxdim=", "override", "server=", "client=", "naovalidarjpeg", "keepfixed", "yes", "outputdir=", "debug", "cuda"]
     arguments, values = getopt.getopt(argumentList, [], long_options)
     sizeimgorg = multiprocessing.Value('i', 1)
     sizeimgnew = multiprocessing.Value('i', 1)
@@ -712,10 +736,16 @@ def go():
     outputdir = None
     verbose = 0
     status = 1
+    debug = False
+    cuda = False
     try:
         for currentArgument, currentValue in arguments:
             if currentArgument in ("--proci"):
                 proci = int(currentValue)
+            elif currentArgument in ("--cuda"):
+                cuda = True
+            elif currentArgument in ("--debug"):
+                debug = True
             elif currentArgument in ("--outputdir"):
                 outputdir = currentValue
             elif currentArgument in ("--verbose"):
@@ -1360,7 +1390,7 @@ def go():
                     
             with open(os.path.join(logsDir, "videos_img.txt"), "w") as imgtxtlog:
                 for img in all_status_img:
-                    imgtxtlog.write(f"{vid},{all_status_img[img]}\n")
+                    imgtxtlog.write(f"{img},{all_status_img[img]}\n")
         except:
             traceback.print_exc()
         return status
